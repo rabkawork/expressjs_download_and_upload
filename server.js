@@ -10,7 +10,12 @@ const fs = require("fs");
 const unzipper = require("unzipper");
 const app = express();
 const PORT = 3000;
+// Pastikan folder `uploads` dan `extracted` ada
+const uploadDir = path.join(__dirname, "uploads");
+const extractDir = path.join(__dirname, "extracted");
 
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
+if (!fs.existsSync(extractDir)) fs.mkdirSync(extractDir);
 // Menggunakan express.static untuk menyajikan folder 'public'
 // app.use('/files', express.static(path.join(__dirname, 'public/files')));
 
@@ -35,15 +40,20 @@ const PORT = 3000;
   }; */
 
 
+
+
+
+
   const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-      cb(null, "uploads/"); // Simpan file ZIP di folder uploads
+      cb(null, uploadDir);
     },
     filename: (req, file, cb) => {
-      cb(null, Date.now() + path.extname(file.originalname)); // Tambahkan timestamp
+      cb(null, file.originalname); // Gunakan nama asli file
     },
   });
   
+  // Filter hanya menerima file ZIP
   const fileFilter = (req, file, cb) => {
     if (file.mimetype === "application/zip" || file.mimetype === "application/x-zip-compressed") {
       cb(null, true);
@@ -51,6 +61,9 @@ const PORT = 3000;
       cb(new Error("Only .zip files are allowed!"), false);
     }
   };
+
+
+
 
 const upload = multer({ storage, fileFilter });
 
@@ -76,17 +89,19 @@ const extractZip = async (filePath, destPath) => {
 };
 
 // API Upload & Ekstrak (TANPA menghapus file ZIP asli)
+
+// API Upload & Ekstrak (Nama file tetap, tidak menghapus ZIP asli)
 app.post("/upload", upload.single("file"), async (req, res) => {
   if (!req.file) {
     return res.status(400).send("No file uploaded.");
   }
 
-  const zipFilePath = path.join(__dirname, "uploads", req.file.filename);
-  const extractFolderPath = path.join(__dirname, "extracted", path.basename(req.file.filename, ".zip"));
+  const zipFilePath = path.join(uploadDir, req.file.originalname);
+  const extractFolderPath = path.join(extractDir, req.file.originalname.replace(".zip", ""));
 
   // Pastikan folder tujuan ada
-  if (!fs.existsSync("extracted")) {
-    fs.mkdirSync("extracted");
+  if (!fs.existsSync(extractFolderPath)) {
+    fs.mkdirSync(extractFolderPath);
   }
 
   try {
